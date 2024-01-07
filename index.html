@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/sample.css">
+<title>slide Puzzle</title>
+<!-- <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> -->
+<script src="js/jquery-3.5.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+</head>
+<body>
+
+    <header>
+    </header>
+    <div id="mainTitle">
+        Slide Puzzle
+    </div>
+    <div id="display">
+        <div id="sideMenu">
+            <div id="numberPuzzle" class="sideMenu">
+                <div id="sideMenuTitle">NumberPuzzle</div> 
+                <select name="" id="selectGrid_01" class="sideMenuSelect">
+                    <option value="" hidden>ピースの数</option>
+                    <option value="3">３ × ３</option>
+                    <option value="4">４ × ４</option>
+                    <option value="5">５ × ５</option>
+                </select>
+                <button id="changeGrid_01" class="sideMenuButton">スタート</button>
+                <button id="timeAttack" class="sideMenuButton">タイムアタック</button>
+                <button id="countStop" class="sideMenuButton">ストップ</button>
+                <button id="countReset" class="sideMenuButton">リセット</button>
+                <div id="time">00:00:000</div>
+                <button id="ranking" class="sideMenuButton">ランキング</button>
+                <button id="rankDelete" class="sideMenuButton">データ削除</button>
+            </div>
+            <div id="imagePuzzle" class="sideMenu">
+                <div id="sideMenuTitle">ImagePuzzle</div>
+                <!-- inputタグをfileタイプにした上で、display:noneで非表示にする -->
+                <input type="file" id="selectImage" style="display: none;">
+                <button id="imageButton" class="sideMenuButton">画像ロード</button>
+                <select name="" id="selectGrid_02" class="sideMenuSelect">
+                    <option value="" hidden>ピースの数</option>
+                    <option value="3">３ × ３</option>
+                    <option value="4">４ × ４</option>
+                    <option value="5">５ × ５</option>
+                </select>
+                <button id="changeGrid_02" class="sideMenuButton">スタート</button>
+                <button id="dataReset" class="sideMenuButton">リセット</button>
+            </div>
+        </div>
+
+        <div id="displayField">
+            <!-- ここにスライドパズルが入る -->
+            <div id="puzzleContainer">
+            </div>
+            <table id="top10">
+                <thead>
+                    <th>#Rank</th><th>#Name</th><th>#Time</th><th>#Date</th>
+                </thead>
+                <tbody id="top10Body">
+                </tbody>
+            </table>
+            <div id="previewImage">
+            </div>
+        </div>
+
+    </div>
+    
+
+    <script>
+
+    // パズルをクリックした時の音
+    let clickAudio = new Audio("./js/puzzle.mp3");
+
+    // 最初はスタートとタイムアタックのボタンは押せない
+    $("#changeGrid_02").prop("disabled", true);
+    $("#dataReset").prop("disabled", true);
+
+    // buttonタグを押すと、inputタグが動作するように設定
+    $("#imageButton").on("click", function(){
+        $("#selectImage").click();
+    });
+    // 画像を外部リンクから取得する
+    let imageURL = "";
+    $("#selectImage").on("change", function image(){
+        if ($("#selectGrid_02").val() !== "") {
+            $("#changeGrid_02").prop("disabled", false);
+        }
+        let fileInput = $(this)[0];
+        //  console.log(fileInput);
+        // console.log(fileInput.files);
+        // console.log(fileInput.files[0]);
+        let reader = new FileReader();
+        // 画像の読み込みが完了したら実装されるコード（="onload"コード）
+        reader.onload = function (e){
+            // URLを取得（イベント内のtargetのresultにURL記載あり）
+            console.log(e);
+            imageURL = e.target.result;
+            // console.log(imageURL);
+            // createPuzzle(imageURL);
+            // reloadPuzzleData();
+        }
+        // readAsDataURLはFireReaderのメソッドでURLを読み込むコード
+        reader.readAsDataURL(fileInput.files[0]);
+    })
+
+    // パズルのサイズ設定(選択)
+    let gridSize_02 = 3; // 初期のパズルサイズ
+    let pieceSize_02; // ピースのサイズ
+    let previewSize_02 = 20; // ピースのサイズ（見本用）
+    let imageFile = ""; // 最初の画像は空にする
+
+    // 検証ツールでは正しく表示されないが、実際のスマホでは正しく表示される
+    if (window.matchMedia("(max-width: 640px)").matches) {
+        pieceSize_02 = 60;
+    } else {
+        pieceSize_02 = 100;
+    }
+
+    // パズルサイズ毎にピースサイズを調整したいが以下コードはうまく反応せず断念
+    // function test() {
+    //     if (window.matchMedia("(max-width: 640px)").matches && gridSize_02 === 3) {
+    //         pieceSize_02 = 80;
+    //     } else if (window.matchMedia("(max-width: 640px)").matches && gridSize_02 === 4) {
+    //             pieceSize_02 = 60;
+    //     } else if (window.matchMedia("(max-width: 640px)").matches && gridSize_02 === 5) {
+    //             pieceSize_02 = 50;
+    //     } else {
+    //         pieceSize_02 = 100;
+    //     }
+    // }
+
+    // パズルサイズの変更
+    $("#selectGrid_02").on("change",function (){
+        if (imageURL !== "") {
+            $("#changeGrid_02").prop("disabled", false);
+        }
+        gridSize_02 = $("#selectGrid_02").val();
+        console.log(gridSize_02);
+        // imageFile = imageURL
+        // console.log(imageURL)
+        // createPuzzle();
+    })
+
+    // パズルサイズを決定してゲームをスタートする
+    $("#changeGrid_02").on("click", function() {
+        // console.log(gridSize_02);
+        localStorage.setItem("selectGrid", gridSize_02);
+        createPuzzle(imageURL);
+        // reshuffleIfUnsolvable_02();
+        reloadPuzzleData();
+
+        // カウントパズルのリセット
+        $("#selectGrid_01").prop("disabled", false);
+        $("#changeGrid_01").prop("disabled", false);
+        $("#timeAttack").prop("disabled", false);
+        if( $("#timeAttack").text() == "リスタート") {
+            $("#timeAttack").text("タイムアタック");
+        }
+        $("#countStop").prop("disabled", true);
+        clearTimeout(timeoutID);
+        $("#time").text("00:00:000");
+        $("#countReset").prop("disabled", true);
+
+        // ランキングを非表示
+        $("#top10").hide(1000);
+        // ランキングボタンの設定
+        if (gridSize !== "") {
+            $("#ranking").prop("disabled", false);
+        }
+        if ($("#ranking").text() == "画面を戻す") {
+            $("#ranking").text("ランキング");
+        }
+        $("#rankDelete").prop("disabled", true);
+    })
+
+    // パズルサイズを保存しておく(前回プレイしたサイズを保持する)
+    let selectGrid = localStorage.getItem("selectGrid");
+    if(selectGrid) {
+        $("#selectGrid_02").val(selectGrid);
+        gridSize_02 = selectGrid;
+    }
+
+    function createPuzzle(image) {
+        // 取り込んだ画像URLを変数に置き換える
+        if(image){
+            imageFile = image;
+        }
+
+        // セーブデータを削除する関数
+        imageDataReset();
+
+        // あとでピースを代入する用の配列変数
+        let newPieceArray = [];
+        let previewPuzzle = [];
+
+        // ピースを組成する
+        let pieceCount = gridSize_02 * gridSize_02;
+        console.log(gridSize_02, pieceCount);
+        let countNumber = 1;
+        for (let row = 0; row < gridSize_02; row++) {
+            for (let col = 0; col < gridSize_02; col++) {
+                let piece = $(`<div id="puzzlePiece_02_${gridSize_02}" class="puzzlePiece_02" dataNumber=${countNumber}></div>`);
+                // パズルのサイズを設定する
+                piece.css("left", col * pieceSize_02)
+                    .css("top", row * pieceSize_02)
+                    // パズルの背景をセットする
+                    .css("background-image", `url(${imageFile})`)
+                    .css("background-color", "white")
+                    .css("background-size", gridSize_02 * pieceSize_02 + "px " + gridSize_02 * pieceSize_02 + "px")
+                    .css("background-position", -col * pieceSize_02 + "px " + -row * pieceSize_02 + "px");
+                // console.log(piece);
+                newPieceArray.push(piece);
+                countNumber++;
+            }
+        }
+
+        //配列チェック用
+        // console.log(newPieceArray);
+
+        // 見本用のピース組成
+        for (let preRow = 0; preRow < gridSize_02; preRow++) {
+            for (let preCol = 0; preCol < gridSize_02; preCol++) {
+                let piece = $(`<div class="previewPiece_02"></div>`);
+                // パズルのサイズを設定する
+                piece.css("left", preCol * previewSize_02)
+                    .css("top", preRow * previewSize_02)
+                    // パズルの背景をセットする
+                    .css("background-image", `url(${imageFile})`)
+                    .css("background-color", "white")
+                    .css("background-size", gridSize_02 * previewSize_02 + "px " + gridSize_02 * previewSize_02 + "px")
+                    .css("background-position", -preCol * previewSize_02 + "px " + -preRow * previewSize_02 + "px");
+                // console.log(piece);
+                previewPuzzle.push(piece);
+            }
+        }
+
+        // 最後のピース(右下)を空白にする
+        newPieceArray[pieceCount-1].css("background-image", "none").css("background-color", "black").attr("dataNumber", null);
+        // console.log("初期ピース", newPieceArray);
+        previewPuzzle[pieceCount-1].css("background-image", "none").css("background-color", "black")
+        .css("color", "white").css("font-size", "0.45rem").css("text-align", "center").text("サンプル");
+        
+        // 後段でパズルの完成をチェックする用（...を付けることでシャッフル前の配列を取得）
+        let originalPieceArray_02 = [];
+        newPieceArray.forEach(function(piece) {
+            originalPieceArray_02.push(parseInt(piece.attr("dataNumber")))
+        });
+        console.log("オリジナル配置", originalPieceArray_02);
+
+        // ピースをシャッフルする
+        // shuffle_02(newPieceArray);
+
+        // shuffle_02関数にピース配列を代入する（後述の解けるパズルになるまでシャッフルを繰り返す）
+        let solved = false;
+        while (!solved) {
+            newPieceArray = shuffle_02(newPieceArray);
+            let shuffledCountNumber = [];
+            newPieceArray.forEach(function (piece) {
+                shuffledCountNumber.push(parseInt(piece.attr("dataNumber")));
+            });
+            console.log("シャッフル結果", shuffledCountNumber);
+            // console.log("shuffle結果", newPieceArray);
+            solved = puzzleSolved_02(shuffledCountNumber);
+            console.log("solved結果", solved);
+        }
+
+        // ピースを表示させる
+        $("#puzzleContainer").empty().append(newPieceArray);
+        $("#puzzleContainer").attr("class","Size"+gridSize_02+"02");
+
+        $("#previewImage").empty().append(previewPuzzle);
+        $("#previewImage").attr("class","previewSize"+gridSize_02+"02");
+
+        // ピースをクリックして上下左右に空ピースがあったら入れ替える処理
+        $("#puzzleContainer").on("click", ".puzzlePiece_02", function(){
+            // 空ピースのindexを確認する（"filter"で空要素を探す）
+            let emptyPiece = $(".puzzlePiece_02").filter(function() {
+                return $(this).css("background-image") === "none";
+            });
+            // console.log("空ピース", emptyPiece);
+            // console.log("クリックピース", $(this));
+
+            // もしも空ピースが上下左右にあったら入れ替える...のif文
+            if (adjacentCheck_02($(this), emptyPiece)) {
+                swapPiece($(this), emptyPiece);
+                // パズルピースの位置データを保存
+                savePuzzleData();
+
+                // ピースクリック音の設定
+                clickAudio.play();
+            }
+        })
+    }
+
+    // ピースをシャッフルさせる
+    function shuffle_02(array) {
+        for (let j = array.length - 1; j > 0; j--) {            
+            let k = Math.floor(Math.random() * (j + 1));
+            // [array[j], array[k]] = [array[k], array[j]];
+            let tempArray = array[j];
+            array[j] = array[k];
+            array[k] = tempArray; 
+        }
+        return array;
+    }
+
+    // パズルの逆順ペアの数を確認する関数（これ大事）
+    function puzzleSolved_02(array) {
+
+        // 空ピースのindex(dataNumber)を確認する（"NaN"はindexOf関数が反応しないので以下で抽出）
+        let nullPiece = 0;
+        for (let nan = 0;  nan < array.length; nan++) {
+            if(isNaN(array[nan])) {
+                nullPiece = nan;
+            }
+        }
+        console.log("空ピース", nullPiece);
+
+        // 逆順ペア数の確認
+        let solCount = 0;
+        for (let i = 0; i < array.length - 1; i++) {
+            for (let j = i + 1; j < array.length; j++) {
+                if (array[i] && array[j] && array[i] > array[j]) {
+                    solCount++;
+                    console.log("i:"+array[i]+" / "+"j:"+array[j]+" / "+"solCount:"+solCount+" / "+"null:"+nullPiece);
+                }
+            }
+        }
+        // パズルサイズが奇数の時、逆順ペアの数は偶数であればパズルが解ける
+        // パズルサイズが偶数の時、空白の行と逆順ペアの数が両方とも偶数か両方とも奇数であればパズルが解ける
+        if (gridSize_02 % 2 === 1) {
+            return solCount % 2 === 0;
+        } else {
+            let emptyRow = Math.floor(nullPiece / gridSize_02) + 1;
+            console.log (emptyRow, solCount);
+            return (emptyRow % 2 === 1 && solCount % 2 === 1) ||
+            (emptyRow % 2 === 0 && solCount % 2 === 0);
+        }
+    }
+
+    // ピースが隣り合わせにあるかをチェックする関数
+    function adjacentCheck_02(piece_01, piece_02) {
+        // ピースが何行目にあるかを確認する
+        let index_01 = piece_01.index();
+        let index_02 = piece_02.index();
+        // console.log(index_01, index_02);
+        let row_01 = (Math.floor(index_01 / gridSize_02)) + 1;
+        let row_02 = (Math.floor(index_02 / gridSize_02)) + 1;
+        // ピースが何列目にあるかを確認する（%で余りを出す四則演算）
+        let col_01 = (index_01 % gridSize_02) + 1;
+        let col_02 = (index_02 % gridSize_02) + 1;
+        console.log("クリック: " + row_01 + "行目", col_01 + "列目")
+        console.log("空: " + row_02 + "行目", col_02 + "列目")
+        // 位置が上下左右いずれかの１つズレであることをチェックする
+        return (
+            // 縦1行ずれているけど、列は同じ（absは絶対値関数）
+            (Math.abs(row_01 - row_02) === 1 && col_01 === col_02) ||
+            // 列は１つずれているけど、行は同じ（absは絶対値関数）
+            (Math.abs(col_01 - col_02) === 1 && row_01 === row_02)
+        );
+    }
+
+    // ピースを入れ替える処理
+    function swapPiece(piece_01, piece_02) {
+        // 一旦、クリックしたピースの要素を避難
+        let pieceTemp = {
+          "background-image": piece_01.css("background-image"),
+          "background-color": piece_01.css("background-color"),
+          "background-position": piece_01.css("background-position")
+        };
+        // クリックしたピースの位置に空ピースの要素を入れる
+        piece_01.css("background-image", "none").css("background-color", "black")
+          .css("background-position", piece_02.css("background-position"));
+        
+        // 空ピースの位置に元のクリックしたピースの要素を入れる
+        piece_02.css(pieceTemp);
+    };
+
+    // パズルの状態をローカルストレージにセーブする（パズルの状態保存は常に１つ）
+    function savePuzzleData() {
+        // let key = gridSize_02 + ":" + imageURL;
+        let puzzleData = [];
+        $(".puzzlePiece_02").each(function() {
+            puzzleData.push({
+                // row: $(this).attr("dataRow"),
+                // col: $(this).attr("dataCol"),
+                // 最初はrowとcolの取得を考えていたが、backgroundのデータを取得することで対応可能
+                backgroundImage: $(this).css("background-image"),
+                backgroundColor: $(this).css("background-color"),
+                backgroundPosition: $(this).css("background-position")
+            })
+        })
+        localStorage.setItem(`${gridSize_02}_${imageURL}`, JSON.stringify(puzzleData));
+    }
+
+    // パズルのセーブデータをローカルストレージから取得する（リロード）
+    function reloadPuzzleData() {
+        let saveData = JSON.parse(localStorage.getItem(`${gridSize_02}_${imageURL}`));
+        if(saveData) {
+            $(".puzzlePiece_02").each(function(index) {
+                let savePosition = saveData[index];
+                // console.log(savePosition);
+                $(this).css("background-image", savePosition["backgroundImage"]);
+                $(this).css("background-color", savePosition["backgroundColor"]);
+                $(this).css("background-position", savePosition["backgroundPosition"]);
+            })
+        }
+    }
+
+    // セーブデータを削除する関数
+    function imageDataReset() {
+        // console.log(imageFile);
+        $("#dataReset").prop("disabled", false);
+        $("#dataReset").on("click", function(){
+            localStorage.removeItem(imageFile);
+            localStorage.removeItem("selectGrid");
+            $("#selectGrid_02").prop("selectedIndex", 0);
+            $("#puzzleContainer").empty();
+            $("#previewImage").empty();
+            $("#dataReset").prop("disabled", true);
+            $("#changeGrid_02").prop("disabled", true);
+            $("#top10").hide(1000);
+            if ($("#ranking").text() == "画面を戻す") {
+                $("#ranking").text("ランキング");
+            }
+            $("#rankDelete").prop("disabled", true);
+        })
+    }
+    
+    // パズルのサイズ設定(選択)
+    let gridSize = "";
+    $("#selectGrid_01").on("change", function() {
+        gridSize = $("#selectGrid_01").val();
+    })
+
+    // 最初はスタートとタイムアタックのボタンは押せない
+    $("#changeGrid_01").prop("disabled", true);
+    $("#timeAttack").prop("disabled", true);
+    $("#countStop").prop("disabled", true);
+    $("#countReset").prop("disabled", true);
+
+    // ランキングボタンはパズルサイズを選ばないとクリックできない
+    $("#ranking").prop("disabled", true);
+    $("#rankDelete").prop("disabled", true);
+
+    // 最初はランキングを表示しない
+    $("#top10").hide();
+
+    // パズルサイズを選んだらゲームスタート
+    $("#selectGrid_01").on("change",function (){
+        if ($("#selectGrid_01").val() !== "") {
+            $("#changeGrid_01").prop("disabled", false);
+            $("#timeAttack").prop("disabled", false);
+            $("#ranking").prop("disabled", false);
+
+            if ($("#ranking").text() == "画面を戻す") {
+                $("#top10").hide();
+                $("#top10").show(1000);
+            }
+        }
+        clearTimeout(timeoutID);
+    });
+
+    // パズルサイズを決定してゲームをスタートする
+    $("#changeGrid_01").on("click", function() {
+        // console.log(gridSize);
+        // emptyでpuzzleContainerを空にする
+        $("#puzzleContainer").empty();
+        puzzleStart();
+
+        puzzleComplete = false;
+        clearTimeout(timeoutID);
+        $("#previewImage").empty();
+        $("#dataReset").prop("disabled", true);
+
+        if ($("#ranking").text() == "画面を戻す") {
+            $("#ranking").text("ランキング");
+            $("#top10").hide(1000);
+        }
+        $("#rankDelete").prop("disabled", true);
+    });
+
+    // タイムアタック用の変数
+    let startTime;
+    let stopTime = 0;
+    let timeCount;
+    let timeoutID; //時間のカウントを止める時に使う変数
+
+    // カウント表示のための関数
+    function displayTime() {
+        let currentTime = new Date(Date.now() - startTime + stopTime);
+        // console.log(currentTime);
+        let h = String(currentTime.getHours()-9).padStart(2, "0");
+        let m = String(currentTime.getMinutes()).padStart(2, "0");
+        let s = String(currentTime.getSeconds()).padStart(2, "0");
+        let ms = String(currentTime.getMilliseconds()).padStart(3, "0");
+        timeCount = `${m}:${s}:${ms}`;
+        $("#time").text(timeCount);
+        // $("#time").text(`${h}:${m}:${s}:${ms}`);
+        // 0.1秒毎にタイマーを更新する
+        timeoutID = setTimeout(displayTime, 100);
+        // console.log(timeoutID);
+    }
+
+    // タイムアタックスタート
+    $("#timeAttack").on("click", function() {
+        $("#timeAttack").prop("disabled", true);
+        $("#countStop").prop("disabled", false);
+        $("#countReset").prop("disabled", true);
+        $("#selectGrid_01").prop("disabled", true);
+        $("#dataReset").prop("disabled", true);
+        $("#ranking").prop("disabled", true);
+        $("#rankDelete").prop("disabled", true);
+        if ($("#ranking").text() == "画面を戻す") {
+            $("#ranking").text("ランキング");
+        }
+        $("#top10").hide();
+        $("#previewImage").empty();
+        puzzleComplete = false;
+        startTime = Date.now();
+        console.log("スタートタイム:", startTime);
+        if( $("#timeAttack").text() == "タイムアタック") {
+            $("#timeAttack").text("リスタート");
+            $("#puzzleContainer").empty();
+            puzzleStart();
+        }
+        displayTime();
+        $("#changeGrid_01").prop("disabled", true);
+    })
+
+    // カウントストップ
+    $("#countStop").on("click", function() {
+        // カウントストップしている時間を累積で算出
+        stopTime += (Date.now() - startTime);
+        console.log(stopTime);
+        console.log("ストップタイム", stopTime);
+        // clearTimeoutでタイマー処理を終了させる
+        clearTimeout(timeoutID);
+        $("#timeAttack").prop("disabled", false);
+        $("#countStop").prop("disabled", true);
+        $("#countReset").prop("disabled", false);
+        puzzleComplete = true;
+        // localStorage.setItem("time", timeCount);
+    })
+
+    // カウントリセット
+    $("#countReset").on("click", function() {
+        $("#time").text("00:00:000");
+        // カウントストップしている時間をリセット
+        stopTime = 0;
+        $("#timeAttack").prop("disabled", false);
+        $("#countStop").prop("disabled", true);
+        $("#countReset").prop("disabled", true);
+        $("#selectGrid_01").prop("disabled", false);
+        $("#changeGrid_01").prop("disabled", false);
+        if (gridSize !== "") {
+            $("#ranking").prop("disabled", false);
+        }
+        $("#puzzleContainer").empty();
+        if( $("#timeAttack").text() == "リスタート") {
+            $("#timeAttack").text("タイムアタック");
+        }
+        puzzleComplete = false;
+    })
+
+    // ランキングボタン設定
+    $("#ranking").on("click", function() {
+        if ($("#ranking").text() == "ランキング") {
+            $("#ranking").text("画面を戻す");
+            // ランキングを表示させる関数
+            ranking();
+            $("#top10").hide();
+            $("#top10").show(1000);
+            $("#rankDelete").prop("disabled", false);
+            return;
+        }
+        // ランキングテーブルを非表示にする
+        if ($("#ranking").text() == "画面を戻す") {
+            $("#ranking").text("ランキング");
+            $("#top10").hide(1000);
+            $("#rankDelete").prop("disabled", true);
+            return;
+        }
+    })
+    
+    // ランキング削除設定
+    $("#rankDelete").on("click", function() {
+        $("#top10").hide(1000);
+        localStorage.removeItem(`top10_${gridSize}`);
+        if ($("#ranking").text() == "画面を戻す") {
+            $("#ranking").text("ランキング");
+            $("#rankDelete").prop("disabled", true);
+        }
+        $("#selectGrid_01").prop("selectedIndex", 0);
+        $("#changeGrid_01").prop("disabled", true);
+        $("#timeAttack").prop("disabled", true);
+        $("#ranking").prop("disabled", true);
+        clearTimeout(timeoutID);
+    })
+
+    // コンプリートチェック用（タイムアタックのカウントストップ時も利用）
+    let puzzleComplete = false;
+
+    function puzzleStart() {
+        // パズルのピース数
+        let pieceCount = gridSize * gridSize;
+        
+        // パズルのピースを作る（Array.from関数で配列を作る）
+        // 以下URLからindexセットのアロー関数を学ぶ
+        // https://note.affi-sapo-sv.com/js-array-from.php
+        let pieceArray = Array.from({ length: pieceCount - 1 }, (e, index) => index + 1);
+        // 配列の最後に"空のピース"を作る。
+        pieceArray.push(null);
+
+        // 後段でパズルの完成をチェックする用（...を付けることで数値のみを配列として取得）
+        let originalPieceArray = [...pieceArray]; 
+        console.log("オリジナル配置", originalPieceArray);
+
+        // shuffle関数にピース配列を代入する（後述の解けるパズルになるまでシャッフルを繰り返す）
+        let solved = false;
+        while (!solved) {
+            pieceArray = shuffle(pieceArray);
+            console.log("初期ピース配置", pieceArray);
+            solved = puzzleSolve(pieceArray);
+            console.log("solved結果", solved);
+        }
+
+        // パズルのピースを表示させる
+        // $(document).ready(function(){
+        for (let i = 0; i < pieceCount; i++) {
+            let piece = $(`<div id="puzzlePiece_01_${gridSize}" class="puzzlePiece_01"></div>`);
+            // piece.attr("data-index", i)
+            piece.text(pieceArray[i]);
+            $("#puzzleContainer").append(piece);
+            // gridSizeによってcssを分岐させるためにclassを付与する
+            $("#puzzleContainer").attr("class","Size"+gridSize+"01");
+        }
+
+        // ピースをクリックして上下左右に空ピースがあったら入れ替える処理
+        $("#puzzleContainer").on("click", ".puzzlePiece_01", function(){
+            // パズルが完成していたらクリックが効かないようにする
+            if (puzzleComplete) {
+                return;
+            }
+            // 空ピースのindexを確認する
+            let emptyPiece = pieceArray.indexOf(null);
+            console.log("空ピース", emptyPiece);
+            // クリックしたピースのindexを確認する
+            let nowPiece = $(this).index();
+            console.log("クリックピース", nowPiece);
+
+            // もしも空ピースが上下左右にあったら入れ替える...のif文
+            if (adjacentCheck(emptyPiece, nowPiece)) {
+                // ピースクリック音の設定
+                clickAudio.play();
+
+                // ピース入れ替え処理
+                pieceArray[emptyPiece] = pieceArray[nowPiece];
+                pieceArray[nowPiece] = null;
+
+                // ピースのindexを更新する関数
+                updatePiece(pieceArray);
+                console.log("最新の並び順", pieceArray);
+                let newPieceArray = JSON.stringify(pieceArray);
+                let originalPieceArrayCheck = JSON.stringify(originalPieceArray);
+                console.log("最新の並び順", newPieceArray);
+                console.log("オリジナル", originalPieceArrayCheck);
+
+                // オリジナルピースと最新のピースの並び順が一致したらパズル完成
+                if (originalPieceArrayCheck === newPieceArray) {
+                    puzzleComplete = true ;
+                    let nullIndex = pieceArray.indexOf(null);
+                    // console.log(nullIndex);
+                    pieceArray[nullIndex] = "COMPLETE";
+                    // nullピースをコンプリートピースにする
+                    $(`.puzzlePiece_01:eq(${nullIndex})`).addClass("completePiece");
+                    updatePiece(pieceArray);
+
+                    // タイムアタック側の設定
+                    clearTimeout(timeoutID);
+                    if ( $("#timeAttack").text() == "リスタート") {
+                        $("#timeAttack").text("タイムアタック");
+                    }
+                    // 完成タイムを記録
+                    if ($("#time").text() !== "00:00:000") {
+                        let completeTime = $("#time").text();
+                        console.log("完成タイム", completeTime);
+                        setTimeout (function () {
+                            let nickname = prompt("あなたのニックネームを入力して");
+                            // ニックネーム入れない場合は終わり
+                            if (nickname === null) {
+                                return;
+                            }
+
+                            // パズル完成した日付を取得
+                            let now = new Date();
+                            let year = now.getFullYear();
+                            let month = now.getMonth() + 1;
+                            let date = now.getDate();
+                            let nowData = year + "/" + month + "/" + date;
+                            gridSize = $("#selectGrid_01").val();
+
+                            // パズル完成登録リスト ※getItemを先に書くことで、並び替え・TOP10残しを処理した上でsetItemに移行する
+                            let top10List = JSON.parse(localStorage.getItem(`top10_${gridSize}`)) || [];
+                            top10List.push({
+                                grid: gridSize,
+                                date: nowData,
+                                name: nickname,
+                                time: completeTime,
+                            });
+                            console.log("タイム並替え前", top10List);
+
+                            // 完成タイム順に並び替えるためタイムを数値化
+                            function timeCV (time) {
+                                let [mm, ss, sss] = time.split(':').map(Number);
+                                return mm * 60000 + ss * 1000 + sss;
+                            }
+
+                            // 完成タイム順に並び替える"sort関数"
+                            top10List.sort(function(a,b) {
+                                // console.log(timeCV(a.time)+" vs "+timeCV(b.time))
+                                return timeCV(a.time) - timeCV(b.time);
+                            });
+                            console.log("タイム並替え後", top10List);
+
+                            // 完成タイムの内、TOP10だけを残す"slice関数"
+                            top10List = top10List.slice(0,10)
+
+                            // ローカルストレージにセット
+                            localStorage.setItem(`top10_${gridSize}`, JSON.stringify(top10List));
+
+                            // TOP10を表示させる
+                            displayTop10(top10List);
+                            $("#top10").show(1000);
+
+                        }, 1000)
+                    }
+                    
+                    $("#changeGrid_01").prop("disabled", false);
+                    $("#timeAttack").prop("disabled", false);
+                    $("#countStop").prop("disabled", true);
+                    $("#countReset").prop("disabled", true);
+                    $("#selectGrid_01").attr("disabled", false);
+                    $("#ranking").prop("disabled", false);
+                }
+            }
+        })
+    };
+
+    let top10List;
+    // ランキング表示するための関数
+    function ranking () {
+        top10List = JSON.parse(localStorage.getItem(`top10_${gridSize}`));
+        // 完成タイム順に並び替えるためタイムを数値化
+        function timeCV (time) {
+            let [mm, ss, sss] = time.split(':').map(Number);
+            return mm * 60000 + ss * 1000 + sss;
+        }
+        // 完成タイム順に並び替える"sort関数"
+        top10List.sort(function(a,b) {
+            return timeCV(a.time) - timeCV(b.time);
+        });
+        // 完成タイムの内、TOP10だけを残す"slice関数"
+        top10List = top10List.slice(0,10)
+        // TOP10を表示させる
+        displayTop10(top10List);
+    }
+
+    // TOP10を表示させる関数
+    function displayTop10(list) {
+        $("#top10Body").empty();
+        list.forEach(function(record,index) {
+            let listData = `<tr>
+                <td class="listTD"> ${index + 1} </td>
+                <td class="listTD"> ${record.name} </td>
+                <td class="listTD"> ${record.time} </td>
+                <td class="listTD"> ${record.date} </td>
+            </tr>`
+            $("#top10Body").append(listData);
+        });
+    }
+
+    // ピースが隣り合わせにあるかをチェックする関数
+    function adjacentCheck(piece_01, piece_02) {
+        // ピースが何行目にあるかを確認する
+        let row_01 = (Math.floor(piece_01 / gridSize)) + 1;
+        let row_02 = (Math.floor(piece_02 / gridSize)) + 1;
+        // ピースが何列目にあるかを確認する（%で余りを出す四則演算）
+        let col_01 = (piece_01 % gridSize) + 1;
+        let col_02 = (piece_02 % gridSize) + 1;
+        console.log("空: " + row_01 + "行目", col_01 + "列目")
+        console.log("クリック: " + row_02 + "行目", col_02 + "列目")
+        // 位置が上下左右いずれかの１つズレであることをチェックする
+        return (
+            // 縦1行ずれているけど、列は同じ（absは絶対値関数）
+            (Math.abs(row_01 - row_02) === 1 && col_01 === col_02) ||
+            // 列は１つずれているけど、行は同じ（absは絶対値関数）
+            (Math.abs(col_01 - col_02) === 1 && row_01 === row_02)
+        );
+    }
+
+    // ピースのindexを更新する関数
+    function updatePiece(pieceArray) {
+        // eachは繰り返し実行される処理（以下ではindexが付与される）
+        $(".puzzlePiece_01").each(function (index) {
+            $(this).text(pieceArray[index]);
+        });
+    }
+
+    // パズルのピースをシャッフルする
+    function shuffle(array) {
+        // for文を逆順から書くことでランダム(シャッフル)が作動し易くする。
+        for (let j = array.length - 1; j > 0; j--) {            
+        // "j"にはlength8~1が逆順で表示される（3*3の場合）※length0は最後残る１つだからシャッフル不要
+            // console.log("length j:", j);
+            let k = Math.floor(Math.random() * (j + 1));
+        // "k"にはRandom関数により算出されたlength風の0~8が表示される（3*3の場合）
+            // console.log("random k:", k);
+        // j番目のピースとk番目のピースを入れ替える処理（方法その１）
+            [array[j], array[k]] = [array[k], array[j]];
+        // 以下、j番目のピースとk番目のピースを入れ替える処理（方法その２）
+            // var temp = pieceS[j];
+            // pieceS[j] = pieceS[k];
+            // pieceS[k] = temp;
+            // console.log("shuffle処理", array);
+        }
+        return array;
+
+        // 以下フィッシャーイェーツを理解するための勉強用
+        // let test = [1, 2, 3, 4, 5];
+        // for (let j = test.length - 1; j >= 0; j--) {
+        //     let k = Math.floor(Math.random() * (j + 1));
+        //     console.log("length_j:",j);
+        //     console.log("random_k:",k);
+        //     [test[j], test[k]] = [test[k], test[j]];
+        //     console.log(test);
+        // }
+
+    }
+
+    // パズルの逆順ペアの数を確認する関数（これ大事）
+    function puzzleSolve(array) {
+        // 空ピースのindex(dataNumber)を確認する
+        let nullPiece = array.indexOf(null);
+
+        // 逆順ペア数の確認
+        let solCount = 0;
+        for (let i = 0; i < array.length - 1; i++) {
+            for (let j = i + 1; j < array.length; j++) {
+                if (array[i] && array[j] && array[i] > array[j]) {
+                    solCount++;
+                    console.log("i:"+array[i]+" / "+"j:"+array[j]+" / "+"solCount:"+solCount+" / "+"null:"+nullPiece);
+                }
+            }
+        }
+        // パズルサイズが奇数の時、逆順ペアの数は偶数であればパズルが解ける
+        // パズルサイズが偶数の時、空白の行と逆順ペアの数が両方とも偶数か両方とも奇数であればパズルが解ける
+        if (gridSize % 2 === 1) {
+            return solCount % 2 === 0;
+        } else {
+            let emptyRow = Math.floor(nullPiece / gridSize) + 1;
+            console.log (emptyRow, solCount);
+            return (emptyRow % 2 === 1 && solCount % 2 === 1) ||
+            (emptyRow % 2 === 0 && solCount % 2 === 0);
+        }
+    }
+    </script>
+</body>
+</html>
