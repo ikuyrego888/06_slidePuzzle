@@ -744,6 +744,9 @@
                             // TOP10を表示させる
                             displayTop10(top10List);
                             $("#top10").show(1000);
+                            if ($("#ranking").text() == "ランキング") {
+                                $("#ranking").text("画面を戻す");
+                            }
 
                         }, 1000)
                     }
