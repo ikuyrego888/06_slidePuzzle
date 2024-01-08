@@ -479,12 +479,17 @@
         $("#time").text("00:00:000");
         $("#previewImage").empty();
         $("#dataReset").prop("disabled", true);
+        $("#rankDelete").prop("disabled", true);
 
+        if ($("#ranking").text() == "ランキング") {
+            $("#top10").hide(1000);
+            return;
+        }
         if ($("#ranking").text() == "画面を戻す") {
             $("#ranking").text("ランキング");
             $("#top10").hide(1000);
+            return;
         }
-        $("#rankDelete").prop("disabled", true);
     });
 
     // タイムアタック用の変数
