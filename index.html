@@ -109,7 +109,7 @@
     // パズルのサイズ設定(選択)
     let gridSize_02 = 3; // 初期のパズルサイズ
     let pieceSize_02; // ピースのサイズ
-    let previewSize_02 = 20; // ピースのサイズ（見本用）
+    let previewSize_02 = 30; // ピースのサイズ（見本用）
     let imageFile = ""; // 最初の画像は空にする
 
     // 検証ツールでは正しく表示されないが、実際のスマホでは正しく表示される
@@ -153,9 +153,11 @@
         reloadPuzzleData();
 
         // カウントパズルのリセット
-        $("#selectGrid_01").prop("disabled", false);
-        $("#changeGrid_01").prop("disabled", false);
-        $("#timeAttack").prop("disabled", false);
+        if (gridSize !== "") {
+            $("#selectGrid_01").prop("disabled", false);
+            $("#changeGrid_01").prop("disabled", false);
+            $("#timeAttack").prop("disabled", false);
+        }
         if( $("#timeAttack").text() == "リスタート") {
             $("#timeAttack").text("タイムアタック");
         }
@@ -241,7 +243,8 @@
         newPieceArray[pieceCount-1].css("background-image", "none").css("background-color", "black").attr("dataNumber", null);
         // console.log("初期ピース", newPieceArray);
         previewPuzzle[pieceCount-1].css("background-image", "none").css("background-color", "black")
-        .css("color", "white").css("font-size", "0.45rem").css("text-align", "center").text("サンプル");
+        .text("みほん").css("color", "white").css("font-size", "0.6rem")
+        .css("display", "flex").css("text-align", "center").css("align-items", "center");
         
         // 後段でパズルの完成をチェックする用（...を付けることでシャッフル前の配列を取得）
         let originalPieceArray_02 = [];
@@ -415,7 +418,7 @@
         // console.log(imageFile);
         $("#dataReset").prop("disabled", false);
         $("#dataReset").on("click", function(){
-            localStorage.removeItem(imageFile);
+            localStorage.removeItem(`${gridSize_02}_${imageURL}`);
             localStorage.removeItem("selectGrid");
             $("#selectGrid_02").prop("selectedIndex", 0);
             $("#puzzleContainer").empty();
@@ -473,6 +476,7 @@
 
         puzzleComplete = false;
         clearTimeout(timeoutID);
+        $("#time").text("00:00:000");
         $("#previewImage").empty();
         $("#dataReset").prop("disabled", true);
 
