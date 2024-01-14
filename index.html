@@ -31,7 +31,8 @@
                 <button id="timeAttack" class="sideMenuButton">タイムアタック</button>
                 <button id="countStop" class="sideMenuButton">ストップ</button>
                 <button id="countReset" class="sideMenuButton">リセット</button>
-                <div id="time">00:00:000</div>
+                <!-- スマホで操作すると時間が更新されることでピースがカタカタとずれてしまうためカウントは別で表示 -->
+                <!-- <div id="time" class="sideMenuButton">00:00:000</div> -->
                 <button id="ranking" class="sideMenuButton">ランキング</button>
                 <button id="rankDelete" class="sideMenuButton">データ削除</button>
             </div>
@@ -64,10 +65,10 @@
             </table>
             <div id="previewImage">
             </div>
+            <div id="time" hidden>00:00:000</div>
         </div>
 
     </div>
-    
 
     <script>
 
@@ -167,6 +168,7 @@
         $("#time").text("00:00:000");
         $("#countReset").prop("disabled", true);
 
+        $("#time").hide();
         // ランキングを非表示
         $("#top10").hide(1000);
         // ランキングボタンの設定
@@ -481,10 +483,10 @@
         puzzleComplete = false;
         clearTimeout(timeoutID);
         $("#time").text("00:00:000");
+        $("#time").hide();
         $("#previewImage").empty();
         $("#dataReset").prop("disabled", true);
         $("#rankDelete").prop("disabled", true);
-
         if ($("#ranking").text() == "ランキング") {
             $("#top10").hide(1000);
             return;
@@ -530,6 +532,7 @@
         if ($("#ranking").text() == "画面を戻す") {
             $("#ranking").text("ランキング");
         }
+        $("#time").show();
         $("#top10").hide();
         $("#previewImage").empty();
         puzzleComplete = false;
@@ -572,6 +575,7 @@
         if (gridSize !== "") {
             $("#ranking").prop("disabled", false);
         }
+        $("#time").hide();
         $("#puzzleContainer").empty();
         if( $("#timeAttack").text() == "リスタート") {
             $("#timeAttack").text("タイムアタック");
@@ -683,13 +687,17 @@
                 console.log("オリジナル", originalPieceArrayCheck);
 
                 // オリジナルピースと最新のピースの並び順が一致したらパズル完成
-                if (originalPieceArrayCheck === newPieceArray) {
+                if (originalPieceArrayCheck !== newPieceArray) {
+                    return;
+                }
+                else if (originalPieceArrayCheck === newPieceArray) {
                     puzzleComplete = true ;
                     let nullIndex = pieceArray.indexOf(null);
                     // console.log(nullIndex);
                     pieceArray[nullIndex] = "COMPLETE";
                     // nullピースをコンプリートピースにする
-                    $(`.puzzlePiece_01:eq(${nullIndex})`).addClass("completePiece");
+                    // $(`.puzzlePiece_01:eq(${nullIndex})`).addClass("completePiece");
+                    $(`.puzzlePiece_01:eq(${nullIndex})`).attr("id", "completePiece"+gridSize);
                     updatePiece(pieceArray);
 
                     // タイムアタック側の設定

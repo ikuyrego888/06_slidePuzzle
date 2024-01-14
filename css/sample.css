@@ -114,12 +114,17 @@ body {
 }
 
 #time {
-  font-size: 0.8rem;
+  /* font-size: 0.8rem; */
+  font-size: 1.0rem;
   text-align: center;
   background-color: white;
   border: thin solid #2589d0;
-  padding: 5px;
+  border-width: 1.6px;
+  padding: 3px;
   border-radius: 5px;
+  width: 40%;
+  margin-top: 5%;
+  margin-left: 3%;
 }
 
 #puzzleContainer {
@@ -131,7 +136,7 @@ body {
 /* Numberパズルの設定 */
 .Size301 {
   display: grid;
-  grid-template-columns: repeat(3,100px);
+  grid-template-columns: repeat(3,0fr);
   /* grid-template-rows: repeat(3,100px); */
   gap: 5px;
   margin-bottom: auto;
@@ -140,7 +145,7 @@ body {
 
 .Size401 {
   display: grid;
-  grid-template-columns: repeat(4,100px);
+  grid-template-columns: repeat(4,0fr);
   /* grid-template-rows: repeat(4,100px); */
   gap: 5px;
   margin-bottom: auto;
@@ -149,7 +154,7 @@ body {
 
 .Size501 {
   display: grid;
-  grid-template-columns: repeat(5,100px);
+  grid-template-columns: repeat(5,0fr);
   /* grid-template-rows: repeat(5,100px); */
   gap: 5px;
   margin-bottom: auto;
@@ -167,7 +172,7 @@ body {
   cursor: pointer;
 }
 
-.completePiece {
+#completePiece3, #completePiece4, #completePiece5 {
   font-size: 1.0rem;
   background-color: rgb(198, 160, 45);
 }
@@ -204,7 +209,7 @@ body {
 }
 
 #previewImage {
-  margin-top: 5%;
+  margin-top: 2%;
   margin-left: 5%;
 }
 
@@ -312,9 +317,9 @@ table {
     100% 0;
   }
   #time {
-    font-size: 0.5rem;
-    padding-top: 3px;
-    padding-bottom: 3px;
+    font-size: 0.7rem;
+    /* padding-top: 3px; */
+    /* padding-bottom: 3px; */
   }
   .Size301 {
     grid-template-columns: repeat(3,80px);
@@ -366,7 +371,19 @@ table {
     width: 60px;
     height: 60px;
   }
-  .completePiece {
+  #completePiece3 {
+    width: 80px;
+    height: 80px;
+    font-size: 0.7rem;
+  }
+  #completePiece4 {
+    width: 60px;
+    height: 60px;
+    font-size: 0.6rem;
+  }
+  #completePiece5 {
+    width: 50px;
+    height: 50px;
     font-size: 0.5rem;
   }
   table {
